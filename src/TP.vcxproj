@@ -182,6 +182,8 @@
     <None Include="shaders\background.fs.glsl" />
     <None Include="shaders\spline.vs.glsl" />
     <None Include="shaders\spline.fs.glsl" />
+    <None Include="shaders\color.vs.glsl" />
+    <None Include="shaders\color.fs.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inf2705\OpenGLApplication.hpp" />

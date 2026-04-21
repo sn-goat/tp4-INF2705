@@ -44,6 +44,28 @@ protected:
     }
 };
 
+class ColorShader : public ShaderProgram
+{
+public:
+    GLint mvpULoc = -1;
+    GLint colorULoc = -1;
+
+protected:
+    void load() override
+    {
+        name_ = "ColorShader";
+        loadShaderSource(GL_VERTEX_SHADER, "./shaders/color.vs.glsl");
+        loadShaderSource(GL_FRAGMENT_SHADER, "./shaders/color.fs.glsl");
+        link();
+    }
+
+    void getAllUniformLocations() override
+    {
+        mvpULoc = glGetUniformLocation(id_, "mvp");
+        colorULoc = glGetUniformLocation(id_, "color");
+    }
+};
+
 class SplineShader : public ShaderProgram
 {
 public:

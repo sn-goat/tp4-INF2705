@@ -42,6 +42,38 @@ struct Transform
     }
 };
 
+// Hand position in the stick figure's local space (right hand, where the weapon goes)
+static const vec3 HAND_LOCAL = vec3(0.45f, 1.0f, 0.0f);
+
+static std::vector<vec3> buildStickFigureLines()
+{
+    std::vector<vec3> v;
+    auto seg = [&](vec3 a, vec3 b) { v.push_back(a); v.push_back(b); };
+
+    // Torso
+    seg({0.0f, 0.9f, 0.0f}, {0.0f, 1.5f, 0.0f});
+    // Left arm (body's left -> viewer's right when facing us)
+    seg({0.0f, 1.45f, 0.0f}, {-0.45f, 1.0f, 0.0f});
+    // Right arm (weapon hand)
+    seg({0.0f, 1.45f, 0.0f}, HAND_LOCAL);
+    // Legs
+    seg({0.0f, 0.9f, 0.0f}, {-0.25f, 0.0f, 0.0f});
+    seg({0.0f, 0.9f, 0.0f}, { 0.25f, 0.0f, 0.0f});
+
+    // Head: octagon in XY plane
+    const int N = 12;
+    vec3 center(0.0f, 1.7f, 0.0f);
+    float r = 0.15f;
+    for (int i = 0; i < N; ++i)
+    {
+        float a0 = (float(i)     / N) * 2.0f * 3.14159265f;
+        float a1 = (float(i + 1) / N) * 2.0f * 3.14159265f;
+        seg(center + vec3(cos(a0) * r, sin(a0) * r, 0.0f),
+            center + vec3(cos(a1) * r, sin(a1) * r, 0.0f));
+    }
+    return v;
+}
+
 
 struct App : public OpenGLApplication
 {
@@ -71,6 +103,19 @@ struct App : public OpenGLApplication
         basicShader_.create();
         backgroundShader_.create();
         splineShader_.create();
+        colorShader_.create();
+
+        // Stick figure mesh (shared by both figures)
+        auto figureVerts = buildStickFigureLines();
+        figureVertexCount_ = GLsizei(figureVerts.size());
+        glGenVertexArrays(1, &figureVao_);
+        glGenBuffers(1, &figureVbo_);
+        glBindVertexArray(figureVao_);
+        glBindBuffer(GL_ARRAY_BUFFER, figureVbo_);
+        glBufferData(GL_ARRAY_BUFFER, figureVerts.size() * sizeof(vec3), figureVerts.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+        glBindVertexArray(0);
 
         glGenVertexArrays(1, &emptyVao_);
 
@@ -95,11 +140,23 @@ struct App : public OpenGLApplication
         staffTexture_.setFiltering(GL_LINEAR);
         staffTexture_.enableMipmap();
 
-        swordT_.position = vec3(-1.5f, 0.0f, 0.0f);
-        swordT_.scale = 0.5f;
+        // Weapon transforms are offsets *inside the hand's local frame*.
+        swordT_.position = vec3(0.0f, 0.0f, 0.0f);
+        swordT_.rotation = vec3(0.0f, 0.0f, 90.0f);
+        swordT_.scale = 0.4f;
 
-        staffT_.position = vec3(1.5f, 0.0f, 0.0f);
-        staffT_.scale = 0.5f;
+        staffT_.position = vec3(0.0f, 0.0f, 0.0f);
+        staffT_.rotation = vec3(0.0f, 0.0f, 0.0f);
+        staffT_.scale = 0.4f;
+
+        // Figure A holds the sword on the left, faces +Z (toward viewer/centre)
+        figureA_.position = vec3(-2.0f, 0.0f, 0.0f);
+        figureA_.rotation = vec3(0.0f, 90.0f, 0.0f); // turn to face figure B
+        figureA_.scale = 1.0f;
+
+        figureB_.position = vec3(2.0f, 0.0f, 0.0f);
+        figureB_.rotation = vec3(0.0f, -90.0f, 0.0f);
+        figureB_.scale = 1.0f;
     }
 
     void drawFrame() override
@@ -131,19 +188,33 @@ struct App : public OpenGLApplication
         }
         ImGui::Separator();
 
-        ImGui::Text("Sword");
-        ImGui::PushID("sword");
-        ImGui::SliderFloat3("Position##s", value_ptr(swordT_.position), -20.0f, 20.0f);
-        ImGui::SliderFloat3("Rotation##s", value_ptr(swordT_.rotation), -180.0f, 180.0f);
-        ImGui::SliderFloat("Scale##s", &swordT_.scale, 0.01f, 10.0f);
+        ImGui::Text("Figure A (sword wielder)");
+        ImGui::PushID("figA");
+        ImGui::SliderFloat3("Position##f", value_ptr(figureA_.position), -20.0f, 20.0f);
+        ImGui::SliderFloat("Rot Y##f", &figureA_.rotation.y, -180.0f, 180.0f);
         ImGui::PopID();
         ImGui::Separator();
 
-        ImGui::Text("Staff");
+        ImGui::Text("Figure B (staff wielder)");
+        ImGui::PushID("figB");
+        ImGui::SliderFloat3("Position##f", value_ptr(figureB_.position), -20.0f, 20.0f);
+        ImGui::SliderFloat("Rot Y##f", &figureB_.rotation.y, -180.0f, 180.0f);
+        ImGui::PopID();
+        ImGui::Separator();
+
+        ImGui::Text("Sword grip (relative to hand)");
+        ImGui::PushID("sword");
+        ImGui::SliderFloat3("Pos##s", value_ptr(swordT_.position), -2.0f, 2.0f);
+        ImGui::SliderFloat3("Rot##s", value_ptr(swordT_.rotation), -180.0f, 180.0f);
+        ImGui::SliderFloat("Scale##s", &swordT_.scale, 0.01f, 5.0f);
+        ImGui::PopID();
+        ImGui::Separator();
+
+        ImGui::Text("Staff grip (relative to hand)");
         ImGui::PushID("staff");
-        ImGui::SliderFloat3("Position##t", value_ptr(staffT_.position), -20.0f, 20.0f);
-        ImGui::SliderFloat3("Rotation##t", value_ptr(staffT_.rotation), -180.0f, 180.0f);
-        ImGui::SliderFloat("Scale##t", &staffT_.scale, 0.01f, 10.0f);
+        ImGui::SliderFloat3("Pos##t", value_ptr(staffT_.position), -2.0f, 2.0f);
+        ImGui::SliderFloat3("Rot##t", value_ptr(staffT_.rotation), -180.0f, 180.0f);
+        ImGui::SliderFloat("Scale##t", &staffT_.scale, 0.01f, 5.0f);
         ImGui::PopID();
         ImGui::End();
 
@@ -151,34 +222,61 @@ struct App : public OpenGLApplication
         mat4 proj = getProjectionMatrix();
         mat4 projView = proj * view;
 
+        // Idle bob — gentle vertical breathing, out of phase between the two figures
+        float bobA = sin(totalTime_ * 1.8f) * 0.05f;
+        float bobB = sin(totalTime_ * 1.8f + 3.14159f) * 0.05f;
+
+        mat4 figureAModel = figureA_.matrix() * translate(mat4(1.0f), vec3(0, bobA, 0));
+        mat4 figureBModel = figureB_.matrix() * translate(mat4(1.0f), vec3(0, bobB, 0));
+
+        // Draw stick figures
+        colorShader_.use();
+        glLineWidth(3.0f);
+        glBindVertexArray(figureVao_);
+
+        glUniformMatrix4fv(colorShader_.mvpULoc, 1, GL_FALSE, value_ptr(projView * figureAModel));
+        glUniform3f(colorShader_.colorULoc, 1.0f, 0.95f, 0.8f);
+        glDrawArrays(GL_LINES, 0, figureVertexCount_);
+
+        glUniformMatrix4fv(colorShader_.mvpULoc, 1, GL_FALSE, value_ptr(projView * figureBModel));
+        glUniform3f(colorShader_.colorULoc, 0.85f, 0.95f, 1.0f);
+        glDrawArrays(GL_LINES, 0, figureVertexCount_);
+
+        glBindVertexArray(0);
+
+        // Hand world matrices (where the weapon is held)
+        mat4 handA = figureAModel * translate(mat4(1.0f), HAND_LOCAL);
+        mat4 handB = figureBModel * translate(mat4(1.0f), HAND_LOCAL);
+
+        // Weapons parented to hands
         basicShader_.use();
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(basicShader_.diffuseSamplerULoc, 0);
 
         {
-            mat4 mvp = projView * swordT_.matrix();
+            mat4 mvp = projView * handA * swordT_.matrix();
             glUniformMatrix4fv(basicShader_.mvpULoc, 1, GL_FALSE, value_ptr(mvp));
             swordTexture_.use();
             sword_.draw();
         }
         {
-            mat4 mvp = projView * staffT_.matrix();
+            mat4 mvp = projView * handB * staffT_.matrix();
             glUniformMatrix4fv(basicShader_.mvpULoc, 1, GL_FALSE, value_ptr(mvp));
             staffTexture_.use();
             staff_.draw();
         }
 
-        // Animated Bézier spline connecting the two objects
-        drawSpline(projView);
+        // Animated Bézier spline connecting the two weapons (world-space hand positions)
+        vec3 handPosA = vec3(handA * vec4(0, 0, 0, 1));
+        vec3 handPosB = vec3(handB * vec4(0, 0, 0, 1));
+        drawSpline(projView, handPosA, handPosB);
 
         glDisable(GL_CULL_FACE);
         glDisable(GL_DEPTH_TEST);
     }
 
-    void drawSpline(const mat4& projView)
+    void drawSpline(const mat4& projView, vec3 p0, vec3 p3)
     {
-        vec3 p0 = swordT_.position;
-        vec3 p3 = staffT_.position;
 
         vec3 mid = (p0 + p3) * 0.5f;
         float sway = sin(totalTime_ * 1.5f) * 1.2f;
@@ -311,9 +409,16 @@ private:
     BasicShader basicShader_;
     BackgroundShader backgroundShader_;
     SplineShader splineShader_;
+    ColorShader colorShader_;
 
     Model sword_;
     Model staff_;
+
+    GLuint figureVao_ = 0;
+    GLuint figureVbo_ = 0;
+    GLsizei figureVertexCount_ = 0;
+    Transform figureA_;
+    Transform figureB_;
 
     Texture2D swordTexture_;
     Texture2D staffTexture_;

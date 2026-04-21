@@ -114,5 +114,11 @@
     <None Include="shaders\spline.fs.glsl">
       <Filter>Shader Source Files</Filter>
     </None>
+   <None Include="shaders\color.fs.glsl">
+      <Filter>Shader Source Files</Filter>
+    </None>
+   <None Include="shaders\color.vs.glsl">
+      <Filter>Shader Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
