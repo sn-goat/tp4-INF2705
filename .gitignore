@@ -1,0 +1,35 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.vcxproj.user
+
+# Build output
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+ARM/
+ARM64/
+[Bb]in/
+[Oo]bj/
+
+# Compiled files
+*.exe
+*.dll
+*.lib
+*.pdb
+*.obj
+*.ilk
+*.pch
+*.ipch
+*.tlog/
+
+# NuGet
+packages/
+*.nupkg
+
+# OS files
+Thumbs.db
+*.DS_Store
