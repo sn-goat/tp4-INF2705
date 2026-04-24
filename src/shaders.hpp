@@ -6,7 +6,20 @@ class BasicShader : public ShaderProgram
 {
 public:
     GLint mvpULoc = -1;
+    GLint modelViewULoc = -1;
+    GLint normalMatrixULoc = -1;
     GLint diffuseSamplerULoc = -1;
+
+    GLint ambientColorULoc = -1;
+    GLint dirLightDirViewULoc = -1;
+    GLint dirLightColorULoc = -1;
+    GLint pointLightPosViewULoc = -1;
+    GLint pointLightColorULoc = -1;
+
+    GLint kaULoc = -1;
+    GLint kdULoc = -1;
+    GLint ksULoc = -1;
+    GLint shininessULoc = -1;
 
 protected:
     void load() override
@@ -20,7 +33,20 @@ protected:
     void getAllUniformLocations() override
     {
         mvpULoc = glGetUniformLocation(id_, "mvp");
+        modelViewULoc = glGetUniformLocation(id_, "modelView");
+        normalMatrixULoc = glGetUniformLocation(id_, "normalMatrix");
         diffuseSamplerULoc = glGetUniformLocation(id_, "diffuseSampler");
+
+        ambientColorULoc = glGetUniformLocation(id_, "ambientColor");
+        dirLightDirViewULoc = glGetUniformLocation(id_, "dirLightDirView");
+        dirLightColorULoc = glGetUniformLocation(id_, "dirLightColor");
+        pointLightPosViewULoc = glGetUniformLocation(id_, "pointLightPosView");
+        pointLightColorULoc = glGetUniformLocation(id_, "pointLightColor");
+
+        kaULoc = glGetUniformLocation(id_, "ka");
+        kdULoc = glGetUniformLocation(id_, "kd");
+        ksULoc = glGetUniformLocation(id_, "ks");
+        shininessULoc = glGetUniformLocation(id_, "shininess");
     }
 };
 

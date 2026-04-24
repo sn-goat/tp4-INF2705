@@ -42,6 +42,14 @@ struct Transform
     }
 };
 
+struct Material
+{
+    float ka = 0.3f;
+    float kd = 0.8f;
+    float ks = 0.45f;
+    float shininess = 37.0f;
+};
+
 // Hand position in the stick figure's local space (right hand, where the weapon goes)
 static const vec3 HAND_LOCAL = vec3(0.45f, 1.0f, 0.0f);
 
@@ -157,6 +165,15 @@ struct App : public OpenGLApplication
         figureB_.position = vec3(2.0f, 0.0f, 0.0f);
         figureB_.rotation = vec3(0.0f, -90.0f, 0.0f);
         figureB_.scale = 1.0f;
+
+        ambientColor_ = vec3(0.2f);
+        dirLightDirWorld_ = normalize(vec3(-0.5f, -1.0f, -0.3f));
+        dirLightColor_ = vec3(1.0f);
+        pointLightWorldPos_ = vec3(0.0f, 3.0f, 2.0f);
+        pointLightColor_ = vec3(1.0f);
+
+        swordMat_ = {0.2f, 0.8f, 0.8f, 59.0f};
+        staffMat_ = {0.2f, 0.8f, 0.3f, 15.0f};
     }
 
     void drawFrame() override
@@ -216,6 +233,29 @@ struct App : public OpenGLApplication
         ImGui::SliderFloat3("Rot##t", value_ptr(staffT_.rotation), -180.0f, 180.0f);
         ImGui::SliderFloat("Scale##t", &staffT_.scale, 0.01f, 5.0f);
         ImGui::PopID();
+        ImGui::Separator();
+
+        ImGui::Text("Illumination");
+        ImGui::ColorEdit3("Ambient", value_ptr(ambientColor_));
+        ImGui::Text("Directional light");
+        ImGui::SliderFloat3("Dir##d", value_ptr(dirLightDirWorld_), -1.0f, 1.0f);
+        ImGui::ColorEdit3("Color##d", value_ptr(dirLightColor_));
+        ImGui::Text("Point light");
+        ImGui::SliderFloat3("Pos##p", value_ptr(pointLightWorldPos_), -10.0f, 10.0f);
+        ImGui::ColorEdit3("Color##p", value_ptr(pointLightColor_));
+        ImGui::Separator();
+
+        ImGui::Text("Sword material");
+        ImGui::SliderFloat("ka##sw", &swordMat_.ka, 0.0f, 1.0f);
+        ImGui::SliderFloat("kd##sw", &swordMat_.kd, 0.0f, 1.0f);
+        ImGui::SliderFloat("ks##sw", &swordMat_.ks, 0.0f, 1.0f);
+        ImGui::SliderFloat("shininess##sw", &swordMat_.shininess, 1.0f, 256.0f);
+
+        ImGui::Text("Staff material");
+        ImGui::SliderFloat("ka##st", &staffMat_.ka, 0.0f, 1.0f);
+        ImGui::SliderFloat("kd##st", &staffMat_.kd, 0.0f, 1.0f);
+        ImGui::SliderFloat("ks##st", &staffMat_.ks, 0.0f, 1.0f);
+        ImGui::SliderFloat("shininess##st", &staffMat_.shininess, 1.0f, 256.0f);
         ImGui::End();
 
         mat4 view = getViewMatrix();
@@ -253,15 +293,47 @@ struct App : public OpenGLApplication
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(basicShader_.diffuseSamplerULoc, 0);
 
+        vec3 dirLightDirView = vec3(view * vec4(dirLightDirWorld_, 0.0f));
+        vec3 pointLightPosView = vec3(view * vec4(pointLightWorldPos_, 1.0f));
+
+        glUniform3fv(basicShader_.ambientColorULoc, 1, value_ptr(ambientColor_));
+        glUniform3fv(basicShader_.dirLightDirViewULoc, 1, value_ptr(dirLightDirView));
+        glUniform3fv(basicShader_.dirLightColorULoc, 1, value_ptr(dirLightColor_));
+        glUniform3fv(basicShader_.pointLightPosViewULoc, 1, value_ptr(pointLightPosView));
+        glUniform3fv(basicShader_.pointLightColorULoc, 1, value_ptr(pointLightColor_));
+
         {
-            mat4 mvp = projView * handA * swordT_.matrix();
-            glUniformMatrix4fv(basicShader_.mvpULoc, 1, GL_FALSE, value_ptr(mvp));
+            mat4 swordModelView = view * handA * swordT_.matrix();
+            mat4 swordMvp = proj * swordModelView;
+            mat3 swordNormalMatrix = transpose(inverse(mat3(swordModelView)));
+
+            glUniformMatrix4fv(basicShader_.mvpULoc, 1, GL_FALSE, value_ptr(swordMvp));
+            glUniformMatrix4fv(basicShader_.modelViewULoc, 1, GL_FALSE, value_ptr(swordModelView));
+            glUniformMatrix3fv(basicShader_.normalMatrixULoc, 1, GL_FALSE, value_ptr(swordNormalMatrix));
+
+            glUniform1f(basicShader_.kaULoc, swordMat_.ka);
+            glUniform1f(basicShader_.kdULoc, swordMat_.kd);
+            glUniform1f(basicShader_.ksULoc, swordMat_.ks);
+            glUniform1f(basicShader_.shininessULoc, swordMat_.shininess);
+
             swordTexture_.use();
             sword_.draw();
         }
+
         {
-            mat4 mvp = projView * handB * staffT_.matrix();
-            glUniformMatrix4fv(basicShader_.mvpULoc, 1, GL_FALSE, value_ptr(mvp));
+            mat4 staffModelView = view * handB * staffT_.matrix();
+            mat4 staffMvp = proj * staffModelView;
+            mat3 staffNormalMatrix = transpose(inverse(mat3(staffModelView)));
+
+            glUniformMatrix4fv(basicShader_.mvpULoc, 1, GL_FALSE, value_ptr(staffMvp));
+            glUniformMatrix4fv(basicShader_.modelViewULoc, 1, GL_FALSE, value_ptr(staffModelView));
+            glUniformMatrix3fv(basicShader_.normalMatrixULoc, 1, GL_FALSE, value_ptr(staffNormalMatrix));
+
+            glUniform1f(basicShader_.kaULoc, staffMat_.ka);
+            glUniform1f(basicShader_.kdULoc, staffMat_.kd);
+            glUniform1f(basicShader_.ksULoc, staffMat_.ks);
+            glUniform1f(basicShader_.shininessULoc, staffMat_.shininess);
+
             staffTexture_.use();
             staff_.draw();
         }
@@ -425,6 +497,15 @@ private:
 
     Transform swordT_;
     Transform staffT_;
+
+    vec3 ambientColor_;
+    vec3 dirLightDirWorld_;
+    vec3 dirLightColor_;
+    vec3 pointLightWorldPos_;
+    vec3 pointLightColor_;
+
+    Material swordMat_;
+    Material staffMat_;
 
     GLuint emptyVao_ = 0;
     GLuint splineVao_ = 0;
