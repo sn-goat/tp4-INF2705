@@ -41,8 +41,8 @@ staffNormalMatrix = transpose(inverse(mat3(staffModelView)));
 ```
 
 **Amélioration du rendu** :
-- Les reflets spéculaires sont lisses au lieu d'être
-  interpolés grossièrement entre sommets (ce qui donnerait des
+- Les reflets spéculaires sont lisses et précis plutôt que 
+  calculés approximativement par sommet (ce qui donnerait des
   défaults visuels).
 - Les normales restent correctes même quand les armes subissent
   des rotations ou changements d'échelle dans leurs transformations
