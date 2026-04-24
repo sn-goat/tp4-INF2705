@@ -23,10 +23,10 @@ atténuation `1/d^2`) et les trois composantes :
 
 **Amélioration du rendu** : 
 - Un dégradé diffus qui donne du volume à l'épée et au bâton selon
-  l'orientation de leurs faces par rapport à la lumière,
+  l'orientation de leurs faces par rapport à la lumière.
 - Un reflet spéculaire brillant sur la lame de l'épée (brillance
   élevée, aspect métallique) et un reflet plus doux sur le bâton
-  (brillance faible, aspect bois),
+  (brillance faible, aspect bois).
 
 Les coefficients de matériau (`ka`, `kd`, `ks`, brillance) sont
 différents pour chaque arme afin de rendre leurs surfaces distinctes.
@@ -43,7 +43,7 @@ staffNormalMatrix = transpose(inverse(mat3(staffModelView)));
 **Amélioration du rendu** :
 - Les reflets spéculaires sont lisses au lieu d'être
   interpolés grossièrement entre sommets (ce qui donnerait des
-  défaults visuels),
+  défaults visuels).
 - Les normales restent correctes même quand les armes subissent
   des rotations ou changements d'échelle dans leurs transformations
   (grâce à la matrice des normales).
